@@ -1,84 +1,43 @@
-import { useState } from 'react';
-import { TennisCourt } from '../scenes/CourtScene';
+// src/components/GameUI.jsx
+import React from 'react';
+import { Joystick } from 'react-joystick-component';
+import useGameStore from '../stores/gameStore';
 
-export default function Game({ player }) {
-  const [playerPos, setPlayerPos] = useState({ x: 0, z: -4 });
-  const [ballPos, setBallPos] = useState({ x: 0, y: 1, z: 4 });
+function GameUI({ score }) {
+  const { player1, player2 } = useGameStore();
 
-  const movePlayer = (dx, dz) => {
-    setPlayerPos(prev => ({
-      x: Math.max(-10, Math.min(10, prev.x + dx)),
-      z: Math.max(-11, Math.min(-1, prev.z + dz))
-    }));
+  const handleMove = (e) => {
+    // This is where you will connect the joystick to the player movement
+    console.log('Move:', e);
   };
 
-  const hitBall = (type) => {
-    const force = type === 'topspin' ? 8 : type === 'slice' ? 6 : 4;
-    const dir = { x: (Math.random() - 0.5) * 2, y: force, z: -force };
-    setBallPos({
-      x: playerPos.x + dir.x,
-      y: dir.y,
-      z: playerPos.z + dir.z
-    });
+  const handleStop = (e) => {
+    console.log('Stop:', e);
   };
+  
+  const handleHit = () => {
+      // This is where you will trigger the hit animation and logic
+      console.log('Hit!');
+  }
 
   return (
-    <div className="relative w-full h-screen">
-      <TennisCourt playerPosition={playerPos} ballPosition={ballPos} />
-
-      {/* Virtual Joystick (simplified) */}
-      <div className="absolute bottom-20 left-8 w-20 h-20 bg-gray-800 bg-opacity-50 rounded-full flex items-center justify-center">
-        <button
-          onTouchStart={() => movePlayer(0, -0.5)}
-          className="text-white text-xl"
-        >
-          ↑
-        </button>
-        <button
-          onTouchStart={() => movePlayer(-0.5, 0)}
-          className="text-white text-xl"
-        >
-          ←
-        </button>
-        <button
-          onTouchStart={() => movePlayer(0.5, 0)}
-          className="text-white text-xl"
-        >
-          →
-        </button>
-        <button
-          onTouchStart={() => movePlayer(0, 0.5)}
-          className="text-white text-xl"
-        >
-          ↓
-        </button>
+    <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
+      <div style={{ position: 'absolute', top: '20px', left: '20px', color: 'white', backgroundColor: 'rgba(0,0,0,0.5)', padding: '10px' }}>
+        <p>{player1.name}: {score.player1}</p>
+        <p>{player2.name}: {score.player2}</p>
       </div>
 
-      {/* Shot Buttons */}
-      <div className="absolute bottom-8 right-4 space-y-2">
-        <button
-          onClick={() => hitBall('topspin')}
-          className="block bg-red-600 text-white px-4 py-2 rounded shadow"
-        >
-          Topspin
-        </button>
-        <button
-          onClick={() => hitBall('slice')}
-          className="block bg-blue-600 text-white px-4 py-2 rounded shadow"
-        >
-          Slice
-        </button>
-        <button
-          onClick={() => hitBall('lob')}
-          className="block bg-green-600 text-white px-4 py-2 rounded shadow"
-        >
-          Lob
-        </button>
+      <div style={{ position: 'absolute', bottom: '50px', left: '50px', pointerEvents: 'auto' }}>
+        <Joystick size={100} baseColor="rgba(255, 255, 255, 0.5)" stickColor="rgba(255, 255, 255, 0.8)" move={handleMove} stop={handleStop} />
       </div>
 
-      <div className="absolute top-4 left-4 text-white bg-black bg-opacity-50 p-2 rounded">
-        Player: {player?.name}
+      <div style={{ position: 'absolute', bottom: '50px', right: '50px', pointerEvents: 'auto' }}>
+          <button onClick={handleHit} style={{width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(255, 255, 255, 0.8)', border: 'none'}}>
+              HIT
+          </button>
       </div>
     </div>
   );
 }
+
+export default GameUI;
