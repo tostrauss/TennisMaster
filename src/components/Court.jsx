@@ -1,9 +1,31 @@
 // src/components/Court.jsx
-import React from 'react';
+import React, { useEffect } from 'react';
 import { usePlane, useBox } from '@react-three/cannon';
-import { Plane, Box } from '@react-three/drei';
+import { Plane, Box, useTexture } from '@react-three/drei';
+import { useGameStore } from '../stores/gameStore';
+import { courts } from '../data/players';/components/Court.jsx
+import React, { useEffect } from 'react';
+import { usePlane, useBox } from '@react-three/cannon';
+import { Plane, Box, useTexture } from '@react-three/drei';
+import useGameStore from '../stores/gameStore';
+import { courts } from '../data/players';
 
 function Court() {
+  const currentCourt = useGameStore(state => state.currentCourt);
+  const court = courts.find(c => c.id === currentCourt) || courts[0];
+  
+  // Load court texture based on surface type
+  const texture = useTexture(`/textures/${court.surface}_court.jpg`);
+  
+  useEffect(() => {
+    // Update physics parameters based on court surface
+    // This would affect ball bounce and player movement
+    const physicsParams = {
+      friction: court.surface === 'clay' ? 0.8 : court.surface === 'grass' ? 0.4 : 0.6,
+      restitution: court.bounceHeight,
+    };
+    // Update physics world parameters here
+  }, [court]);
   // Create a static plane for the ground
   const [groundRef] = usePlane(() => ({
     rotation: [-Math.PI / 2, 0, 0],
@@ -35,7 +57,11 @@ function Court() {
     <>
       {/* Ground */}
       <Plane args={[100, 100]} ref={groundRef} receiveShadow>
-        <meshStandardMaterial color="#3E8A5A" />
+        <meshStandardMaterial 
+          map={texture}
+          color={court.color}
+          roughness={court.surface === 'clay' ? 1 : court.surface === 'grass' ? 0.3 : 0.7}
+        />
       </Plane>
 
       {/* Court Lines */}
