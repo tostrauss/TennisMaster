@@ -1,13 +1,27 @@
-import React from 'react';
-import './GameMode.css'; // Optional: for styling, adjust as needed
-
+// src/components/Score.jsx
+import React, { useState, useEffect } from 'react';
 import { ScoreError } from './ErrorBoundary';
 
-const Score = ({ player1Name = "Player 1", player2Name = "Player 2", score }) => {
+const Score = ({ player1Name = "Player 1", player2Name = "Player 2", score, servingPlayer }) => {
 	if (!score) return null;
 
-	// Error state
 	const [error, setError] = useState(null);
+
+	const validateScore = (scoreToValidate) => {
+		const validPoints = [0, 15, 30, 40, 'AD'];
+		if (!scoreToValidate.player1 || !scoreToValidate.player2) {
+			throw new ScoreError('Invalid score object structure');
+		}
+		
+		if (!validPoints.includes(scoreToValidate.player1.points) || !validPoints.includes(scoreToValidate.player2.points)) {
+			throw new ScoreError('Invalid point value detected');
+		}
+
+		if (scoreToValidate.player1.games < 0 || scoreToValidate.player2.games < 0 || 
+				scoreToValidate.player1.sets < 0 || scoreToValidate.player2.sets < 0) {
+			throw new ScoreError('Invalid game or set count detected');
+		}
+	};
 
 	useEffect(() => {
 		try {
@@ -19,57 +33,51 @@ const Score = ({ player1Name = "Player 1", player2Name = "Player 2", score }) =>
 		}
 	}, [score]);
 
-	// Validate score state
-	const validateScore = (score) => {
-		const validPoints = [0, 15, 30, 40, 'AD'];
-		if (!score.player1 || !score.player2) {
-			throw new ScoreError('Invalid score object structure');
-		}
-		
-		// Check for valid point values
-		if (!validPoints.includes(score.player1.points) || !validPoints.includes(score.player2.points)) {
-			throw new ScoreError('Invalid point value detected');
-		}
+	if (error) {
+		return <div style={{ color: 'red' }}>Score Error!</div>;
+	}
 
-		// Check for valid game counts
-		if (score.player1.games < 0 || score.player2.games < 0 || 
-				score.player1.games > 6 || score.player2.games > 6) {
-			throw new ScoreError('Invalid game count detected');
-		}
-
-		// Check for valid set counts
-		if (score.player1.sets < 0 || score.player2.sets < 0 || 
-				score.player1.sets > 3 || score.player2.sets > 3) {
-			throw new ScoreError('Invalid set count detected');
-		}
-	};
-
-	// Validate score before rendering
-	validateScore(score);
+  const formatScore = (playerScore) => {
+    if (playerScore === 'AD') return 'AD';
+    return playerScore === 0 ? '00' : playerScore;
+  };
 
 	return (
-		<div className="scoreboard" style={{ position: 'absolute', top: 30, left: '50%', transform: 'translateX(-50%)', zIndex: 100, background: 'rgba(255,255,255,0.85)', borderRadius: 8, padding: '12px 32px', minWidth: 300 }}>
-			<table style={{ width: '100%', textAlign: 'center' }}>
+		<div style={{
+        backgroundColor: 'rgba(0,0,0,0.7)',
+        padding: '20px',
+        borderRadius: '10px',
+        minWidth: '280px',
+        fontFamily: '"Courier New", Courier, monospace',
+        border: '1px solid rgba(255,255,255,0.2)'
+      }}>
+			<table style={{ width: '100%', borderCollapse: 'collapse' }}>
 				<thead>
-					<tr>
-						<th></th>
-						<th>Points</th>
-						<th>Games</th>
-						<th>Sets</th>
+					<tr style={{ color: '#aaa', fontSize: '12px' }}>
+						<th style={{ textAlign: 'left', paddingBottom: '5px' }}>PLAYER</th>
+						<th style={{ paddingBottom: '5px' }}>SETS</th>
+						<th style={{ paddingBottom: '5px' }}>GAMES</th>
+						<th style={{ paddingBottom: '5px' }}>POINTS</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr>
-						<td><b>{player1Name}</b></td>
-						<td>{score.player1.points}</td>
-						<td>{score.player1.games}</td>
-						<td>{score.player1.sets}</td>
+					<tr style={{ fontWeight: 'bold' }}>
+						<td style={{ textAlign: 'left', display: 'flex', alignItems: 'center' }}>
+							<span style={{ color: servingPlayer === 'player1' ? '#ffd700' : 'transparent', marginRight: '10px', fontSize: '20px' }}>●</span>
+							{player1Name}
+						</td>
+						<td style={{ textAlign: 'center' }}>{score.player1.sets}</td>
+						<td style={{ textAlign: 'center' }}>{score.player1.games}</td>
+						<td style={{ textAlign: 'center' }}>{formatScore(score.player1.points)}</td>
 					</tr>
-					<tr>
-						<td><b>{player2Name}</b></td>
-						<td>{score.player2.points}</td>
-						<td>{score.player2.games}</td>
-						<td>{score.player2.sets}</td>
+					<tr style={{ fontWeight: 'bold' }}>
+						<td style={{ textAlign: 'left', display: 'flex', alignItems: 'center' }}>
+							<span style={{ color: servingPlayer === 'player2' ? '#ffd700' : 'transparent', marginRight: '10px', fontSize: '20px' }}>●</span>
+							{player2Name}
+						</td>
+						<td style={{ textAlign: 'center' }}>{score.player2.sets}</td>
+						<td style={{ textAlign: 'center' }}>{score.player2.games}</td>
+						<td style={{ textAlign: 'center' }}>{formatScore(score.player2.points)}</td>
 					</tr>
 				</tbody>
 			</table>

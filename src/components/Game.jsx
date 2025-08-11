@@ -1,7 +1,7 @@
 // src/components/Game.jsx
 import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Physics, Debug } from '@react-three/cannon';
+import { Physics } from '@react-three/cannon'; // Debug removed from imports
 import Scene from './Scene';
 import GameUI from './GameUI';
 import useGameStore from '../stores/gameStore';
@@ -53,13 +53,12 @@ function Game() {
             restitution: court.bounceHeight * 0.9
           }}
         >
-          <Debug color="black" scale={1.01}>
-            <Scene 
-              player1={player1} 
-              player2={player2}
-              court={court}
-            />
-          </Debug>
+          {/* The <Debug> wrapper has been removed from around the <Scene> component */}
+          <Scene 
+            player1={player1} 
+            player2={player2}
+            court={court}
+          />
         </Physics>
       </Canvas>
       <GameUI 

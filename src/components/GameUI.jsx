@@ -2,6 +2,7 @@
 import React from 'react';
 import { Joystick } from 'react-joystick-component';
 import useGameStore from '../stores/gameStore';
+import Score from './Score'; // Import the Score component
 
 function GameUI({ player1, player2, court }) {
   const { setGamePhase, score, servingPlayer } = useGameStore();
@@ -20,58 +21,6 @@ function GameUI({ player1, player2, court }) {
   
   const handleHit = (shotType) => {
     window.dispatchEvent(new CustomEvent('playerHit', { detail: { type: shotType }}));
-  };
-
-  const formatScore = (playerScore) => {
-    if (playerScore === 'AD') return 'AD';
-    return playerScore === 0 ? '00' : playerScore;
-  };
-
-  const renderScore = () => {
-    const p1Score = score.player1;
-    const p2Score = score.player2;
-
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '10px',
-        backgroundColor: 'rgba(0,0,0,0.7)',
-        padding: '20px',
-        borderRadius: '10px',
-        minWidth: '280px',
-        fontFamily: '"Courier New", Courier, monospace',
-        border: '1px solid rgba(255,255,255,0.2)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <span style={{ color: servingPlayer === 'player1' ? '#ffd700' : 'transparent', marginRight: '10px', fontSize: '20px', lineHeight: '10px' }}>
-              ●
-            </span>
-            <span style={{ color: 'white' }}>{player1.name}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold' }}>
-            <span>{p1Score.sets}</span>
-            <span>{p1Score.games}</span>
-            <span>{formatScore(p1Score.points)}</span>
-          </div>
-        </div>
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <span style={{ color: servingPlayer === 'player2' ? '#ffd700' : 'transparent', marginRight: '10px', fontSize: '20px', lineHeight: '10px' }}>
-              ●
-            </span>
-            <span style={{ color: 'white' }}>{player2.name}</span>
-          </div>
-          <div style={{ display: 'flex', gap: '20px', color: 'white', fontWeight: 'bold' }}>
-            <span>{p2Score.sets}</span>
-            <span>{p2Score.games}</span>
-            <span>{formatScore(p2Score.points)}</span>
-          </div>
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -97,7 +46,12 @@ function GameUI({ player1, player2, court }) {
       </div>
 
       <div style={{ position: 'absolute', top: '20px', right: '20px' }}>
-        {renderScore()}
+        <Score 
+          player1Name={player1.name}
+          player2Name={player2.name}
+          score={score}
+          servingPlayer={servingPlayer}
+        />
       </div>
 
       <div style={{ position: 'absolute', bottom: '50px', left: '50px', pointerEvents: 'auto' }}>
@@ -115,12 +69,16 @@ function GameUI({ player1, player2, court }) {
         bottom: '50px', 
         right: '50px', 
         pointerEvents: 'auto',
-        display: 'flex',
-        gap: '20px',
-        alignItems: 'center'
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gap: '15px',
+        alignItems: 'center',
+        width: '200px'
       }}>
+        <button onClick={() => handleHit('TOPSPIN')} style={shotButtonStyle('#e74c3c', { gridColumn: '1 / 3' })}>TOPSPIN</button>
         <button onClick={() => handleHit('SLICE')} style={shotButtonStyle('#3498db')}>SLICE</button>
-        <button onClick={() => handleHit('TOPSPIN')} style={shotButtonStyle('#e74c3c')}>TOPSPIN</button>
+        <button onClick={() => handleHit('LOB')} style={shotButtonStyle('#f1c40f')}>LOB</button>
+        <button onClick={() => handleHit('DROP_SHOT')} style={shotButtonStyle('#9b59b6')}>DROP</button>
         <button onClick={() => setGamePhase('menu')} style={menuButtonStyle}>MENU</button>
       </div>
     </div>
@@ -133,12 +91,16 @@ const baseButtonStyle = {
   border: '2px solid rgba(255,255,255,0.5)', color: 'white',
   fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
   boxShadow: '0 4px 8px rgba(0,0,0,0.3)',
-  textShadow: '1px 1px 1px black'
+  textShadow: '1px 1px 1px black',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center'
 };
 
-const shotButtonStyle = (color) => ({
+const shotButtonStyle = (color, additionalStyles = {}) => ({
   ...baseButtonStyle,
   backgroundColor: color,
+  ...additionalStyles
 });
 
 const menuButtonStyle = {

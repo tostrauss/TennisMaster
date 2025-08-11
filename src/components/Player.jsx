@@ -7,9 +7,14 @@ import { Vector3 } from 'three';
 import { AIController } from '../utils/aiController';
 import useGameStore from '../stores/gameStore';
 
+const COURT_LENGTH = 23.77;
+const SERVICE_LINE_Z = 6.4;
+
 function Player({ playerData, position, isOpponent, gameState }) {
   const { scene: gameScene } = useThree();
   const playerGroupRef = useRef();
+  
+  const { pointState, setPointState, servingPlayer } = useGameStore();
 
   const [ref, api] = useSphere(() => ({
     mass: 80,
@@ -19,12 +24,10 @@ function Player({ playerData, position, isOpponent, gameState }) {
     linearDamping: 0.95,
   }));
 
-  // Ref to store the current velocity
   const velocity = useRef([0, 0, 0]);
   useEffect(() => {
-    // Subscribe to the velocity property
     const unsubscribe = api.velocity.subscribe((v) => (velocity.current = v));
-    return unsubscribe; // Unsubscribe on component unmount
+    return unsubscribe;
   }, [api.velocity]);
 
   const ai = useRef(null);
@@ -93,7 +96,7 @@ function Player({ playerData, position, isOpponent, gameState }) {
     }
   });
 
-  const hit = (aiShot = null) => {
+  const hit = (shotDetails = {}) => {
     if (!playerGroupRef.current || !ballRef.current) return;
 
     gsap.to(playerGroupRef.current.rotation, { z: isOpponent ? -Math.PI / 4 : Math.PI / 4, duration: 0.1, yoyo: true, repeat: 1 });
@@ -101,22 +104,44 @@ function Player({ playerData, position, isOpponent, gameState }) {
     const playerPosition = new Vector3();
     playerGroupRef.current.getWorldPosition(playerPosition);
 
-    if (playerPosition.distanceTo(ballRef.current.position) > 3.5) return;
-
+    const isMyTurnToServe = (servingPlayer === 'player1' && !isOpponent) || (servingPlayer === 'player2' && isOpponent);
+    
     let shotParams;
-    if (aiShot) {
-      shotParams = { ...aiShot };
+
+    if (pointState === 'serving' && isMyTurnToServe) {
+        if (playerPosition.distanceTo(ballRef.current.position) > 2) return; // Must be close to the ball to serve
+        
+        const targetZ = isOpponent ? SERVICE_LINE_Z - 1 : -SERVICE_LINE_Z + 1;
+        const targetX = playerPosition.x > 0 ? -3 : 3; // Aim cross-court
+
+        shotParams = {
+            power: playerData.attributes.power * 1.2, // Serves are stronger
+            spin: playerData.attributes.spin,
+            accuracy: playerData.attributes.accuracy,
+            shotType: 'FLAT', // Default serve type
+            targetPosition: new Vector3(targetX, 0.5, targetZ),
+        };
+        setPointState('rally');
     } else {
-      const targetPosition = new Vector3((Math.random() - 0.5) * 10, 0.5, isOpponent ? 8 : -8);
-      shotParams = {
-        power: playerData.attributes.power,
-        spin: playerData.attributes.spin,
-        accuracy: playerData.attributes.accuracy,
-        shotType: 'TOPSPIN',
-        targetPosition,
-      };
+        if (playerPosition.distanceTo(ballRef.current.position) > 3.5) return; // Must be close to the ball to hit
+
+        if (isOpponent) { // AI Shot
+            shotParams = { ...shotDetails };
+        } else { // Player Shot
+            const targetPosition = new Vector3((Math.random() - 0.5) * 10, 0.5, isOpponent ? COURT_LENGTH/2 : -COURT_LENGTH/2);
+            shotParams = {
+                power: playerData.attributes.power,
+                spin: playerData.attributes.spin,
+                accuracy: playerData.attributes.accuracy,
+                shotType: shotDetails.type || 'TOPSPIN',
+                targetPosition,
+            };
+        }
     }
-    window.dispatchEvent(new CustomEvent('ballHit', { detail: shotParams }));
+
+    if (shotParams) {
+        window.dispatchEvent(new CustomEvent('ballHit', { detail: shotParams }));
+    }
   };
 
   return (

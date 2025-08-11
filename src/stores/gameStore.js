@@ -32,6 +32,9 @@ const useGameStore = create((set, get) => ({
   gamePhase: 'menu', // 'menu', 'select', 'playing', 'tournament', 'gameover'
   setGamePhase: (phase) => set({ gamePhase: phase }),
 
+  pointState: 'serving', // 'serving', 'rally', 'point_over'
+  setPointState: (state) => set({ pointState: state }),
+
   player1: null,
   player2: null,
   setPlayer1: (player) => set({ player1: player }),
@@ -60,6 +63,7 @@ const useGameStore = create((set, get) => ({
       gamePhase: 'playing',
       lastMatchWinner: null
     });
+    get().resetGame();
   },
 
   addPoint: (player) => {
@@ -67,6 +71,11 @@ const useGameStore = create((set, get) => ({
       const newScore = JSON.parse(JSON.stringify(state.score));
       const p = player; // 'player1' or 'player2'
       const o = player === 'player1' ? 'player2' : 'player1';
+
+      // This function is called when a point is won
+      const onPointEnd = (nextState = {}) => {
+        return { ...nextState, pointState: 'serving' };
+      };
       
       const winGame = () => {
         newScore[p].games++;
@@ -84,17 +93,17 @@ const useGameStore = create((set, get) => ({
         if (newScore[p].sets >= 2) {
           const winner = state[p];
           if (state.activeTournamentMatch) {
-            return {
+            return onPointEnd({
               gamePhase: 'tournament',
               lastMatchWinner: winner,
               activeTournamentMatch: null
-            };
+            });
           } else {
-            return { gamePhase: 'gameover' };
+            return onPointEnd({ gamePhase: 'gameover' });
           }
         }
         // Switch server after a game is won
-        return { score: newScore, servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1' };
+        return onPointEnd({ score: newScore, servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1' });
       };
 
       const pPoints = newScore[p].points;
@@ -110,7 +119,7 @@ const useGameStore = create((set, get) => ({
       } else if (pPoints === 'AD') {
         return winGame();
       }
-      return { score: newScore };
+      return onPointEnd({ score: newScore });
     });
   },
 
@@ -119,7 +128,8 @@ const useGameStore = create((set, get) => ({
       player1: { points: 0, games: 0, sets: 0 },
       player2: { points: 0, games: 0, sets: 0 }
     },
-    servingPlayer: 'player1'
+    servingPlayer: 'player1',
+    pointState: 'serving'
   })
 }));
 

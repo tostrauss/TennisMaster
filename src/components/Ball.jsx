@@ -5,6 +5,9 @@ import { useSphere } from '@react-three/cannon';
 import { Vector3 } from 'three';
 import { SHOT_TYPES } from '../utils/shotTypes';
 import { PhysicsError } from './ErrorBoundary';
+import useGameStore from '../stores/gameStore';
+
+const COURT_LENGTH = 23.77;
 
 function Ball({ addPoint }) {
   const [ref, api] = useSphere(() => ({
@@ -24,13 +27,32 @@ function Ball({ addPoint }) {
   const spin = useRef([0, 0, 0]);
   const currentShotType = useRef(null);
 
-  // Expose the api to the mesh's userData so other components can access it
   useEffect(() => {
     if (ref.current) {
       ref.current.userData.api = api;
     }
   }, [ref, api]);
 
+  const resetForServe = () => {
+    const { servingPlayer, score } = useGameStore.getState();
+    const pointMap = { 0: 0, 15: 1, 30: 2, 40: 3, 'AD': 4 };
+    const p1Points = pointMap[score.player1.points] || 0;
+    const p2Points = pointMap[score.player2.points] || 0;
+    const totalPoints = p1Points + p2Points;
+    
+    const serveX = totalPoints % 2 === 0 ? 2 : -2; // Deuce court (right) on even points, Ad court (left) on odd
+    const serveZ = servingPlayer === 'player1' ? (COURT_LENGTH / 2) - 1 : (-COURT_LENGTH / 2) + 1;
+    
+    api.position.set(serveX, 1, serveZ);
+    api.velocity.set(0, 0, 0);
+    api.angularVelocity.set(0, 0, 0);
+    currentShotType.current = null;
+  };
+
+  useEffect(() => {
+    // Initial serve position
+    resetForServe();
+  }, []);
 
   const validateBallState = (pos, vel) => {
     if (pos.some(v => !isFinite(v)) || vel.some(v => !isFinite(v))) {
@@ -105,15 +127,10 @@ function Ball({ addPoint }) {
   useEffect(() => {
     const unsubscribe = api.position.subscribe((p) => {
       position.current = p;
-      if (p[1] < -5) { // Ball fell way through the ground
+      if (p[1] < -5) { // Ball fell through the ground
         const scoringPlayer = p[2] > 0 ? 'player1' : 'player2';
         addPoint(scoringPlayer);
-        
-        // Reset ball position relative to who scored for the next serve
-        api.position.set(0, 5, scoringPlayer === 'player1' ? 2 : -2);
-        api.velocity.set(0, 0, 0);
-        api.angularVelocity.set(0, 0, 0);
-        currentShotType.current = null;
+        resetForServe();
       }
     });
     return unsubscribe;
