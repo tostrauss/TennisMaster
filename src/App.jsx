@@ -4,6 +4,7 @@ import useGameStore from './stores/gameStore';
 import Menu from './components/Menu';
 import PlayerSelect from './components/PlayerSelect';
 import Game from './components/Game';
+import Tournament from './components/Tournament'; // Assuming you might have a tournament mode
 
 function App() {
   const { gamePhase } = useGameStore();
@@ -16,13 +17,15 @@ function App() {
         return <PlayerSelect />;
       case 'playing':
         return <Game />;
+      case 'tournament':
+        return <Tournament />;
       default:
         return <Menu />;
     }
   };
 
   return (
-    <div style={{ width: '100vw', height: '100vh' }}>
+    <div style={{ width: '100vw', height: '100vh', background: '#000' }}>
       {renderPhase()}
     </div>
   );

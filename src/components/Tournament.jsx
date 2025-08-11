@@ -1,136 +1,122 @@
-import React, { useState, useEffect } from 'react';
-import { TOURNAMENTS, TournamentBracket, TOURNAMENT_ROUNDS, fullPlayerRoster, PRIZE_DISTRIBUTION } from '../data/tournaments';
+// src/components/Tournament.jsx
+import React, { useState, useEffect, useMemo } from 'react';
+import { TOURNAMENTS, TournamentBracket, fullPlayerRoster } from '../data/tournaments';
 import useGameStore from '../stores/gameStore';
+import './Tournament.css';
 
 const Tournament = () => {
   const [selectedTournament, setSelectedTournament] = useState(TOURNAMENTS.AUSTRALIAN_OPEN);
   const [bracket, setBracket] = useState(null);
-  const [currentRound, setCurrentRound] = useState(TOURNAMENT_ROUNDS.ROUND_128);
-  const { currentPlayer } = useGameStore();
+  const [currentRound, setCurrentRound] = useState(null);
+  
+  const { 
+    player1: userPlayer, // The player the user selected initially
+    lastMatchWinner,
+    startTournamentMatch,
+    setGamePhase
+  } = useGameStore();
 
+  // Initialize or update the bracket
   useEffect(() => {
-    // Initialize tournament bracket
-    const newBracket = new TournamentBracket(selectedTournament, fullPlayerRoster);
-    newBracket.generateInitialBracket();
-    setBracket(newBracket);
-  }, [selectedTournament]);
+    // If there's a winner from the last match, update the bracket state
+    if (lastMatchWinner && bracket) {
+      const updatedBracket = new TournamentBracket(selectedTournament, fullPlayerRoster);
+      updatedBracket.matches = bracket.matches; // Preserve existing matches
+      updatedBracket.currentRound = bracket.currentRound;
 
-  const simulateMatch = (match) => {
-    if (match.completed) return;
-
-    // If player is involved, don't simulate - wait for actual gameplay
-    if (match.player1.id === currentPlayer?.id || match.player2.id === currentPlayer?.id) {
-      return;
+      // Find the match that just finished
+      const lastRoundName = updatedBracket.rounds[updatedBracket.rounds.indexOf(currentRound) - 1];
+      const finishedMatch = updatedBracket.matches[lastRoundName]?.find(m =>
+        !m.completed && (m.player1.id === userPlayer.id || m.player2.id === userPlayer.id)
+      );
+      
+      if (finishedMatch) {
+        finishedMatch.winner = lastMatchWinner;
+        finishedMatch.completed = true;
+        // This is a placeholder score, a real implementation would get it from the game state
+        finishedMatch.score = [[6,4], [6,3]];
+      }
+      
+      setBracket(updatedBracket);
+    } else {
+      // Otherwise, create a new bracket
+      const newBracket = new TournamentBracket(selectedTournament, fullPlayerRoster);
+      newBracket.generateInitialBracket();
+      setBracket(newBracket);
+      setCurrentRound(newBracket.currentRound);
     }
+  }, [selectedTournament, lastMatchWinner]);
 
-    // Simple simulation based on player attributes
-    const p1Score = calculatePlayerScore(match.player1);
-    const p2Score = calculatePlayerScore(match.player2);
-
-    match.winner = p1Score > p2Score ? match.player1 : match.player2;
-    match.completed = true;
-    
-    // Generate realistic tennis score
-    match.score = generateTennisScore(p1Score, p2Score);
-  };
-
-  const calculatePlayerScore = (player) => {
-    const attributes = player.attributes;
-    // Weight different attributes based on court surface
-    const surfaceWeights = {
-      clay: { speed: 0.8, power: 0.7, accuracy: 1, spin: 1.2, stamina: 1.3, volley: 0.7 },
-      grass: { speed: 1.2, power: 1.1, accuracy: 1, spin: 0.8, stamina: 0.9, volley: 1.2 },
-      hard: { speed: 1, power: 1, accuracy: 1, spin: 1, stamina: 1, volley: 1 }
-    };
-
-    const weights = surfaceWeights[selectedTournament.surface];
-    
-    return Object.keys(attributes).reduce((score, attr) => {
-      return score + (attributes[attr] * weights[attr]);
-    }, 0) + Math.random() * 50; // Add random factor for upsets
-  };
-
-  const generateTennisScore = (p1Score, p2Score) => {
-    const sets = [];
-    const scoreDiff = Math.abs(p1Score - p2Score);
-    const totalSets = Math.min(5, 3 + Math.floor(scoreDiff / 100));
-    
-    for (let i = 0; i < totalSets; i++) {
-      const stronger = p1Score > p2Score ? 0 : 1;
-      const p1Games = stronger === 0 ? 6 : Math.floor(Math.random() * 5);
-      const p2Games = stronger === 1 ? 6 : Math.floor(Math.random() * 5);
-      sets.push([p1Games, p2Games]);
-    }
-    
-    return sets;
-  };
+  const userMatch = useMemo(() => {
+    if (!bracket || !currentRound || !userPlayer) return null;
+    return bracket.matches[currentRound]?.find(match => 
+      !match.completed && (match.player1.id === userPlayer.id || match.player2.id === userPlayer.id)
+    );
+  }, [bracket, currentRound, userPlayer]);
 
   const simulateRound = () => {
     if (!bracket) return;
-
-    // Simulate all matches in current round
     bracket.matches[currentRound].forEach(match => {
-      if (!match.completed) {
-        simulateMatch(match);
+      if (match.completed || match.player1.id === userPlayer.id || match.player2.id === userPlayer.id) {
+        return; // Skip completed matches and the user's match
       }
+      // Simple simulation
+      const p1Score = Object.values(match.player1.attributes).reduce((a, b) => a + b, 0) + Math.random() * 20;
+      const p2Score = Object.values(match.player2.attributes).reduce((a, b) => a + b, 0) + Math.random() * 20;
+      match.winner = p1Score > p2Score ? match.player1 : match.player2;
+      match.score = [[6, Math.floor(Math.random() * 5)], [6, Math.floor(Math.random() * 5)]];
+      match.completed = true;
     });
 
-    // Advance to next round
     if (bracket.advanceRound()) {
       setCurrentRound(bracket.currentRound);
     }
+    setBracket({ ...bracket });
   };
 
-  const renderMatch = (match) => {
-    return (
-      <div className="match" key={`${match.player1.id}-${match.player2.id}`}>
-        <div className={`player ${match.winner?.id === match.player1.id ? 'winner' : ''}`}>
-          {match.player1.name} [{match.player1.country}]
-        </div>
-        <div className={`player ${match.winner?.id === match.player2.id ? 'winner' : ''}`}>
-          {match.player2.name} [{match.player2.country}]
-        </div>
-        {match.completed && match.score && (
-          <div className="score">
-            {match.score.map((set, i) => (
-              <span key={i}>{set[0]}-{set[1]} </span>
-            ))}
-          </div>
-        )}
-      </div>
-    );
+  const handlePlayMatch = () => {
+    if (userMatch) {
+      startTournamentMatch(userMatch);
+    }
   };
 
   return (
     <div className="tournament">
       <div className="tournament-header">
         <h2>{selectedTournament.name}</h2>
-        <select 
-          value={selectedTournament.id}
-          onChange={(e) => setSelectedTournament(TOURNAMENTS[e.target.value])}
-        >
-          {Object.values(TOURNAMENTS).map(tournament => (
-            <option key={tournament.id} value={tournament.id}>
-              {tournament.name}
-            </option>
-          ))}
-        </select>
+        <button onClick={() => setGamePhase('menu')}>Exit Tournament</button>
       </div>
-
+      
       <div className="tournament-controls">
-        <button onClick={simulateRound}>
-          Simulate {currentRound}
-        </button>
+        {userMatch ? (
+          <button className="play-match-button" onClick={handlePlayMatch}>
+            Play Your Match: {userPlayer.name} vs {userMatch.player1.id === userPlayer.id ? userMatch.player2.name : userMatch.player1.name}
+          </button>
+        ) : (
+          <button onClick={simulateRound}>Simulate Next Round</button>
+        )}
       </div>
 
       <div className="tournament-bracket">
-        {bracket && Object.entries(bracket.matches).map(([round, matches]) => (
-          <div key={round} className="round">
-            <h3>{round}</h3>
-            <div className="matches">
-              {matches.map(match => renderMatch(match))}
-            </div>
-          </div>
+        {bracket && bracket.rounds.map(roundName => (
+            bracket.matches[roundName] && (
+                <div key={roundName} className="round">
+                    <h3>{roundName}</h3>
+                    <div className="matches">
+                        {bracket.matches[roundName].map((match, index) => (
+                          <div className="match" key={index}>
+                            <div className={`player ${match.winner?.id === match.player1.id ? 'winner' : ''}`}>
+                              {match.player1.name}
+                            </div>
+                            <div className={`player ${match.winner?.id === match.player2.id ? 'winner' : ''}`}>
+                              {match.player2.name}
+                            </div>
+                            {match.completed && <div className="score">Won</div>}
+                          </div>
+                        ))}
+                    </div>
+                </div>
+            )
         ))}
       </div>
     </div>

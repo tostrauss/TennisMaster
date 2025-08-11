@@ -1,3 +1,4 @@
+// src/data/tournaments.js
 import { topPlayers } from './players';
 
 // Tournament structure constants
@@ -89,26 +90,25 @@ const generateAdditionalPlayers = () => {
     const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
     const country = countries[Math.floor(Math.random() * countries.length)];
 
-    // Generate attributes with more Austrian/German players having higher stats
     let baseAttribute;
     if (country === 'AUT' || country === 'GER') {
-      baseAttribute = Math.floor(Math.random() * 15) + 65; // 65-80 range for Austrian/German players
+      baseAttribute = Math.floor(Math.random() * 15) + 65;
     } else {
-      baseAttribute = Math.floor(Math.random() * 20) + 60; // 60-80 range for others
+      baseAttribute = Math.floor(Math.random() * 20) + 60;
     }
-    const variation = () => Math.floor(Math.random() * 10) - 5; // -5 to +5
+    const variation = () => Math.floor(Math.random() * 10) - 5;
 
     additionalPlayers.push({
       id: existingCount + i + 1,
       name: `${firstName} ${lastName}`,
       country: country,
       attributes: {
-        speed: baseAttribute + variation(),
-        power: baseAttribute + variation(),
-        accuracy: baseAttribute + variation(),
-        spin: baseAttribute + variation(),
-        stamina: baseAttribute + variation(),
-        volley: baseAttribute + variation()
+        speed: Math.min(100, baseAttribute + variation()),
+        power: Math.min(100, baseAttribute + variation()),
+        accuracy: Math.min(100, baseAttribute + variation()),
+        spin: Math.min(100, baseAttribute + variation()),
+        stamina: Math.min(100, baseAttribute + variation()),
+        volley: Math.min(100, baseAttribute + variation())
       },
       model: "player_generic.glb",
       ranking: existingCount + i + 1
@@ -118,16 +118,14 @@ const generateAdditionalPlayers = () => {
   return additionalPlayers;
 };
 
-// Combine top players with generated players
 export const fullPlayerRoster = [
   ...topPlayers.map((player, index) => ({
     ...player,
-    ranking: index + 1 // Add rankings to top players
+    ranking: index + 1
   })),
   ...generateAdditionalPlayers()
 ];
 
-// Tournament match structure
 export class TournamentMatch {
   constructor(player1, player2, round) {
     this.player1 = player1;
@@ -139,7 +137,6 @@ export class TournamentMatch {
   }
 }
 
-// Tournament bracket generator
 export class TournamentBracket {
   constructor(tournament, players) {
     this.tournament = tournament;
@@ -147,47 +144,34 @@ export class TournamentBracket {
     this.matches = {};
     this.currentRound = TOURNAMENT_ROUNDS.ROUND_128;
     this.rounds = [
-      TOURNAMENT_ROUNDS.ROUND_128,
-      TOURNAMENT_ROUNDS.ROUND_64,
-      TOURNAMENT_ROUNDS.ROUND_32,
-      TOURNAMENT_ROUNDS.ROUND_16,
-      TOURNAMENT_ROUNDS.QUARTER_FINALS,
-      TOURNAMENT_ROUNDS.SEMI_FINALS,
-      TOURNAMENT_ROUNDS.FINALS
+      TOURNAMENT_ROUNDS.ROUND_128, TOURNAMENT_ROUNDS.ROUND_64, TOURNAMENT_ROUNDS.ROUND_32,
+      TOURNAMENT_ROUNDS.ROUND_16, TOURNAMENT_ROUNDS.QUARTER_FINALS,
+      TOURNAMENT_ROUNDS.SEMI_FINALS, TOURNAMENT_ROUNDS.FINALS
     ];
   }
 
   generateInitialBracket() {
-    // Seed the top 32 players
     const seededPlayers = this.players.slice(0, 32);
     const unseededPlayers = this.players.slice(32);
     
-    // Shuffle unseeded players
     for (let i = unseededPlayers.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [unseededPlayers[i], unseededPlayers[j]] = [unseededPlayers[j], unseededPlayers[i]];
     }
 
-    // Create first round matches
     this.matches[TOURNAMENT_ROUNDS.ROUND_128] = [];
     
-    // Place seeded players according to tennis tournament rules
     const seededPositions = [
-      0, 127, 32, 95, 16, 111, 48, 79,
-      8, 119, 40, 87, 24, 103, 56, 71,
-      4, 123, 36, 91, 20, 107, 52, 75,
-      12, 115, 44, 83, 28, 99, 60, 67
+      0, 127, 32, 95, 16, 111, 48, 79, 8, 119, 40, 87, 24, 103, 56, 71,
+      4, 123, 36, 91, 20, 107, 52, 75, 12, 115, 44, 83, 28, 99, 60, 67
     ];
 
-    // Create a full bracket array
     const bracket = new Array(128).fill(null);
     
-    // Place seeded players
     seededPlayers.forEach((player, index) => {
       bracket[seededPositions[index]] = player;
     });
 
-    // Fill remaining spots with unseeded players
     let unseededIndex = 0;
     for (let i = 0; i < 128; i++) {
       if (bracket[i] === null) {
@@ -195,7 +179,6 @@ export class TournamentBracket {
       }
     }
 
-    // Create matches
     for (let i = 0; i < 128; i += 2) {
       this.matches[TOURNAMENT_ROUNDS.ROUND_128].push(
         new TournamentMatch(bracket[i], bracket[i + 1], TOURNAMENT_ROUNDS.ROUND_128)
@@ -210,10 +193,7 @@ export class TournamentBracket {
     const nextRound = this.rounds[currentRoundIndex + 1];
     this.matches[nextRound] = [];
 
-    // Take winners from current round and pair them up
-    const winners = this.matches[this.currentRound]
-      .map(match => match.winner)
-      .filter(winner => winner !== null);
+    const winners = this.matches[this.currentRound].map(match => match.winner).filter(Boolean);
 
     for (let i = 0; i < winners.length; i += 2) {
       this.matches[nextRound].push(
@@ -226,14 +206,13 @@ export class TournamentBracket {
   }
 }
 
-// Prize money distribution
 export const PRIZE_DISTRIBUTION = {
-  [TOURNAMENT_ROUNDS.ROUND_128]: 0.0025,  // 0.25% of total prize money
-  [TOURNAMENT_ROUNDS.ROUND_64]: 0.005,    // 0.5%
-  [TOURNAMENT_ROUNDS.ROUND_32]: 0.01,     // 1%
-  [TOURNAMENT_ROUNDS.ROUND_16]: 0.02,     // 2%
-  [TOURNAMENT_ROUNDS.QUARTER_FINALS]: 0.04, // 4%
-  [TOURNAMENT_ROUNDS.SEMI_FINALS]: 0.08,   // 8%
-  [TOURNAMENT_ROUNDS.FINALS]: 0.2,        // 20% for runner-up
-  'winner': 0.4                           // 40% for winner
+  [TOURNAMENT_ROUNDS.ROUND_128]: 0.0025,
+  [TOURNAMENT_ROUNDS.ROUND_64]: 0.005,
+  [TOURNAMENT_ROUNDS.ROUND_32]: 0.01,
+  [TOURNAMENT_ROUNDS.ROUND_16]: 0.02,
+  [TOURNAMENT_ROUNDS.QUARTER_FINALS]: 0.04,
+  [TOURNAMENT_ROUNDS.SEMI_FINALS]: 0.08,
+  [TOURNAMENT_ROUNDS.FINALS]: 0.2,
+  'winner': 0.4
 };

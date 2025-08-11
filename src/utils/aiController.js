@@ -273,7 +273,7 @@ export class AIController {
         break;
 
       case 'hitting':
-        const shot = this.calculateShot(ballPosition, opponentPosition);
+        const shot = this.calculateShot(ballPosition, opponentPosition, gameState);
         
         // Reset rally count if ball goes out
         if (Math.abs(ballPosition.x) > 11 || Math.abs(ballPosition.z) > 12) {

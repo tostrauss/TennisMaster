@@ -1,7 +1,8 @@
 // src/stores/gameStore.js
 import { create } from 'zustand';
-import { courts } from '../data/players';
+import { courts, topPlayers } from '../data/players';
 
+// ... (DIFFICULTY_LEVELS and PLAY_STYLES remain the same)
 export const DIFFICULTY_LEVELS = {
   EASY: { label: 'Easy', multiplier: 0.7 },
   MEDIUM: { label: 'Medium', multiplier: 0.85 },
@@ -48,78 +49,98 @@ export const PLAY_STYLES = {
   }
 };
 
+
 const useGameStore = create((set, get) => ({
-  // Game Phase
-  gamePhase: 'menu', // 'menu', 'select', 'playing', 'gameover'
+  // Core game state
+  gamePhase: 'menu', // 'menu', 'select', 'playing', 'tournament', 'gameover'
   setGamePhase: (phase) => set({ gamePhase: phase }),
 
-  // Players
+  // Player and Court selection
   player1: null,
   player2: null,
   setPlayer1: (player) => set({ player1: player }),
   setPlayer2: (player) => set({ player2: player }),
-
-  // Court Selection
   currentCourt: courts[0].id,
   setCurrentCourt: (courtId) => set({ currentCourt: courtId }),
 
-  // Score
+  // Scoring
   score: {
     player1: { points: 0, games: 0, sets: 0 },
     player2: { points: 0, games: 0, sets: 0 }
   },
-  
-  // Score Update Logic
-  addPoint: (player) => set((state) => {
-    const newScore = { ...state.score };
-    const currentPlayer = newScore[player];
-    const otherPlayer = newScore[player === 'player1' ? 'player2' : 'player1'];
-
-    // Tennis scoring: 0, 15, 30, 40, game
-    switch (currentPlayer.points) {
-      case 0: currentPlayer.points = 15; break;
-      case 15: currentPlayer.points = 30; break;
-      case 30: currentPlayer.points = 40; break;
-      case 40:
-        if (otherPlayer.points < 40) {
-          // Win game
-          currentPlayer.points = 0;
-          otherPlayer.points = 0;
-          currentPlayer.games++;
-          
-          // Check for set win
-          if (currentPlayer.games >= 6 && currentPlayer.games - otherPlayer.games >= 2) {
-            currentPlayer.games = 0;
-            otherPlayer.games = 0;
-            currentPlayer.sets++;
-          }
-        } else {
-          // Deuce
-          currentPlayer.points = 'AD';
-        }
-        break;
-      case 'AD':
-        // Win game
-        currentPlayer.points = 0;
-        otherPlayer.points = 0;
-        currentPlayer.games++;
-        break;
-    }
-
-    return { score: newScore };
-  }),
-
-  // Game State
   servingPlayer: 'player1',
-  toggleServe: () => set((state) => ({ 
-    servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1' 
-  })),
-
-  // Game Settings
+  
+  // Game settings
   difficulty: 'MEDIUM',
   setDifficulty: (level) => set({ difficulty: level }),
 
-  // Reset Game
+  // --- NEW: Tournament specific state ---
+  activeTournamentMatch: null, // Holds the current match from the bracket
+  lastMatchWinner: null, // To communicate winner from Game back to Tournament
+  
+  // --- ACTIONS ---
+  
+  startTournamentMatch: (match) => {
+    set({
+      activeTournamentMatch: match,
+      player1: match.player1,
+      player2: match.player2,
+      gamePhase: 'playing',
+      lastMatchWinner: null // Clear previous winner
+    });
+  },
+
+  addPoint: (player) => {
+    set((state) => {
+      const newScore = JSON.parse(JSON.stringify(state.score));
+      const p = player;
+      const o = player === 'player1' ? 'player2' : 'player1';
+      
+      const winGame = () => {
+        newScore[p].games++;
+        newScore.player1.points = 0;
+        newScore.player2.points = 0;
+        
+        // Check for set win
+        if (newScore[p].games >= 6 && newScore[p].games - newScore[o].games >= 2) {
+          newScore[p].sets++;
+          newScore[p].games = 0;
+          newScore[o].games = 0;
+        }
+
+        // Check for match win (Best of 3 sets)
+        if (newScore[p].sets >= 2) {
+          const winner = state[p];
+          if (state.activeTournamentMatch) {
+            return {
+              gamePhase: 'tournament',
+              lastMatchWinner: winner,
+              activeTournamentMatch: null // Match is over
+            };
+          } else {
+            return { gamePhase: 'gameover' };
+          }
+        }
+        return { score: newScore, servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1' };
+      };
+
+      const pPoints = newScore[p].points;
+      const oPoints = newScore[o].points;
+
+      if (pPoints === 0) newScore[p].points = 15;
+      else if (pPoints === 15) newScore[p].points = 30;
+      else if (pPoints === 30) newScore[p].points = 40;
+      else if (pPoints === 40) {
+        if (oPoints === 40) newScore[p].points = 'AD';
+        else if (oPoints === 'AD') newScore[o].points = 40;
+        else return winGame();
+      } else if (pPoints === 'AD') {
+        return winGame();
+      }
+      return { score: newScore };
+    });
+  },
+
   resetGame: () => set({
     score: {
       player1: { points: 0, games: 0, sets: 0 },

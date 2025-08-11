@@ -5,37 +5,37 @@ import { courts } from '../data/players';
 import { DIFFICULTY_LEVELS } from '../stores/gameStore';
 
 function Menu() {
-  const { 
-    setGamePhase, 
-    setCurrentCourt, 
+  const {
+    setGamePhase,
+    setCurrentCourt,
     currentCourt,
     difficulty,
     setDifficulty
   } = useGameStore();
 
   return (
-    <div style={{ 
-      display: 'flex', 
-      flexDirection: 'column', 
-      justifyContent: 'center', 
-      alignItems: 'center', 
-      height: '100%', 
-      background: 'linear-gradient(135deg, #1a472a, #2E8B57)' 
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      justifyContent: 'center',
+      alignItems: 'center',
+      height: '100%',
+      background: 'linear-gradient(135deg, #1a472a, #2E8B57)'
     }}>
-      <h1 style={{ 
-        color: 'white', 
-        fontSize: '4rem', 
+      <h1 style={{
+        color: 'white',
+        fontSize: '4rem',
         marginBottom: '2rem',
         textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
       }}>
         TennisMaster
       </h1>
-      
-      <div style={{ 
-        display: 'grid', 
-        gridTemplateColumns: 'repeat(2, 1fr)', 
+
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(2, 1fr)',
         gap: '1rem',
-        marginBottom: '2rem' 
+        marginBottom: '2rem'
       }}>
         {courts.map(court => (
           <div
@@ -88,11 +88,11 @@ function Menu() {
         ))}
       </div>
 
-      <button 
-        onClick={() => setGamePhase('select')} 
-        style={{ 
-          padding: '1rem 2rem', 
-          fontSize: '1.5rem', 
+      <button
+        onClick={() => setGamePhase('select')}
+        style={{
+          padding: '1rem 2rem',
+          fontSize: '1.5rem',
           cursor: 'pointer',
           backgroundColor: '#fff',
           border: 'none',
@@ -101,7 +101,7 @@ function Menu() {
           transition: 'all 0.3s ease'
         }}
       >
-        Select Players
+        Next
       </button>
     </div>
   );
