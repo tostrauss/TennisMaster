@@ -1,79 +1,99 @@
-// srfunction PlayerSelect() {
-  const { setGamePhase, setPlayer1, setPlayer2, resetGame } = useGameStore();
-  const [selectedPlayer1, setSelectedPlayer1] = useState(null);
-  const [error, setError] = useState(null);
-
-  const validatePlayer = (player) => {
-    if (!player || !player.id || !player.attributes) {
-      throw new Error('Invalid player data');
-    }
-    return true;
-  };
-
-  const handlePlayerSelect = (player) => {
-    try {
-      setError(null);
-      if (!player) return;
-      
-      validatePlayer(player);
-      
-      if (!selectedPlayer1) {
-        setSelectedPlayer1(player);
-      } else {
-        // Don't allow selecting the same player twice
-        if (player.id === selectedPlayer1.id) {
-          setError("Can't select the same player twice!");
-          return;
-        }
-        
-        // Ensure both players are properly set before changing game phase
-        validatePlayer(selectedPlayer1);
-        validatePlayer(player);
-        
-        setPlayer1(selectedPlayer1);
-        setPlayer2(player);
-        resetGame(); // Reset the game state before starting
-        
-        // Small delay to ensure store is updated
-        setTimeout(() => setGamePhase('playing'), 100);
-      }
-    } catch (error) {
-      console.error('Error selecting players:', error);
-      setError(error.message);
-      setSelectedPlayer1(null);
-    }
-  };ponents/PlayerSelect.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import useGameStore from '../stores/gameStore';
 import { topPlayers } from '../data/players';
 
-function PlayerSelect() {
-  const { setGamePhase, setPlayer1, setPlayer2 } = useGameStore();
-  const [selectedPlayer1, setSelectedPlayer1] = useState(null);
+const REQUIRED_ATTRIBUTES = ['speed', 'power', 'accuracy', 'spin', 'stamina', 'volley'];
 
-  const handlePlayerSelect = (player) => {
-    if (!player) return;
-    
+function PlayerSelect() {
+  const { setGamePhase, setPlayer1, setPlayer2, resetGame } = useGameStore();
+  const [selectedPlayer1, setSelectedPlayer1] = useState(null);
+  const [error, setError] = useState(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
+const validatePlayer = (player) => {
+  if (!player || typeof player !== 'object') {
+    throw new Error('Invalid player data');
+  }
+
+  if (!player.id || !player.name || !player.country || !player.attributes || !player.model) {
+    throw new Error(`Missing required player data for ${player.name || 'unknown player'}`);
+  }
+
+  // Validate all required attributes
+  for (const attr of REQUIRED_ATTRIBUTES) {
+    const value = player.attributes[attr];
+    if (typeof value !== 'number' || value < 0 || value > 100) {
+      throw new Error(`Invalid ${attr} value for ${player.name}`);
+    }
+  }
+
+  return true;
+};
+const handlePlayerSelect = async (player) => {
+  try {
+    if (isTransitioning) return;
+    setError(null);
+
+    validatePlayer(player);
+
     if (!selectedPlayer1) {
       setSelectedPlayer1(player);
     } else {
-      // Don't allow selecting the same player twice
       if (player.id === selectedPlayer1.id) {
+        setError("Can't select the same player twice!");
         return;
       }
-      
-      // Ensure both players are properly set before changing game phase
+
+      setIsTransitioning(true);
       try {
         setPlayer1(selectedPlayer1);
         setPlayer2(player);
-        // Small delay to ensure store is updated
-        setTimeout(() => setGamePhase('playing'), 100);
+        await resetGame();
+        setTimeout(() => {
+          setGamePhase('playing');
+        }, 100);
       } catch (error) {
-        console.error('Error selecting players:', error);
+        console.error('Error initializing game:', error);
+        setError('Failed to start game. Please try again.');
         setSelectedPlayer1(null);
+        setPlayer1(null);
+        setPlayer2(null);
       }
     }
-  };
+  } catch (error) {
+    console.error('Player selection error:', error);
+    setError(error.message);
+  } finally {
+    setIsTransitioning(false);
+  }
+};
+
+{error && (
+  <div style={{
+    position: 'fixed',
+    top: '20px',
+    padding: '1rem',
+    backgroundColor: '#ff4444',
+    color: 'white',
+    borderRadius: '8px',
+    zIndex: 1000,
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+  }}>
+    {error}
+  </div>
+)}
+
+<div style={{ 
+  // ... existing styles ...
+  opacity: isTransitioning ? 0.7 : 1,
+  pointerEvents: isTransitioning ? 'none' : 'auto'
+}}></div>
+
+  useEffect(() => {
+    resetGame();
+    setPlayer1(null);
+    setPlayer2(null);
+  }, []);
 
   const renderAttributeBar = (value) => (
     <div style={{ 
@@ -101,13 +121,29 @@ function PlayerSelect() {
       height: '100%', 
       background: 'linear-gradient(135deg, #1a4774, #0066cc)' 
     }}>
+      {error && (
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          padding: '1rem',
+          backgroundColor: '#ff4444',
+          color: 'white',
+          borderRadius: '8px',
+          zIndex: 1000,
+          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+        }}>
+          {error}
+        </div>
+      )}
+      
       <h1 style={{ 
         color: 'white', 
         fontSize: '3rem', 
         marginBottom: '1rem',
         textShadow: '2px 2px 4px rgba(0,0,0,0.3)'
       }}>
-        {!selectedPlayer1 ? 'Select Player 1' : 'Select Player 2'}
+        {isTransitioning ? 'Starting Game...' : 
+         !selectedPlayer1 ? 'Select Player 1' : 'Select Player 2'}
       </h1>
       
       <div style={{ 
@@ -116,7 +152,11 @@ function PlayerSelect() {
         gap: '1rem',
         padding: '2rem',
         maxWidth: '1200px',
-        width: '100%'
+        width: '100%',
+        maxHeight: '70vh',
+        overflowY: 'auto',
+        opacity: isTransitioning ? 0.7 : 1,
+        pointerEvents: isTransitioning ? 'none' : 'auto'
       }}>
         {topPlayers.map((player) => (
           <div 
@@ -124,12 +164,12 @@ function PlayerSelect() {
             onClick={() => handlePlayerSelect(player)}
             style={{ 
               padding: '1.5rem',
-              backgroundColor: selectedPlayer1 === player ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
+              backgroundColor: selectedPlayer1?.id === player.id ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.1)',
               borderRadius: '12px',
               color: 'white',
-              cursor: 'pointer',
+              cursor: isTransitioning ? 'not-allowed' : 'pointer',
               transition: 'all 0.3s ease',
-              transform: selectedPlayer1 === player ? 'scale(1.05)' : 'scale(1)',
+              transform: selectedPlayer1?.id === player.id ? 'scale(1.05)' : 'scale(1)',
               boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
             }}
           >
@@ -137,10 +177,10 @@ function PlayerSelect() {
             <p style={{ color: '#ccc', marginBottom: '0.5rem' }}>{player.country}</p>
             
             <div style={{ display: 'grid', gap: '0.5rem' }}>
-              {Object.entries(player.attributes).map(([attr, value]) => (
+              {REQUIRED_ATTRIBUTES.map((attr) => (
                 <div key={attr} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ textTransform: 'capitalize', marginRight: '1rem' }}>{attr}</span>
-                  {renderAttributeBar(value)}
+                  {renderAttributeBar(player.attributes[attr])}
                 </div>
               ))}
             </div>
@@ -148,21 +188,46 @@ function PlayerSelect() {
         ))}
       </div>
 
-      {selectedPlayer1 && (
+      <div style={{
+        display: 'flex',
+        gap: '1rem',
+        marginTop: '1rem'
+      }}>
+        {selectedPlayer1 && (
+          <button 
+            onClick={() => {
+              setSelectedPlayer1(null);
+              setError(null);
+            }}
+            disabled={isTransitioning}
+            style={{
+              padding: '0.5rem 1rem',
+              backgroundColor: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              cursor: isTransitioning ? 'not-allowed' : 'pointer',
+              opacity: isTransitioning ? 0.7 : 1
+            }}
+          >
+            Back
+          </button>
+        )}
         <button 
-          onClick={() => setSelectedPlayer1(null)}
+          onClick={() => setGamePhase('menu')}
+          disabled={isTransitioning}
           style={{
             padding: '0.5rem 1rem',
-            marginTop: '1rem',
-            backgroundColor: 'white',
-            border: 'none',
+            backgroundColor: 'rgba(255,255,255,0.2)',
+            color: 'white',
+            border: '1px solid white',
             borderRadius: '4px',
-            cursor: 'pointer'
+            cursor: isTransitioning ? 'not-allowed' : 'pointer',
+            opacity: isTransitioning ? 0.7 : 1
           }}
         >
-          Back
+          Return to Menu
         </button>
-      )}
+      </div>
     </div>
   );
 }
