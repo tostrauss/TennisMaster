@@ -93,6 +93,7 @@ function Menu() {
         style={{
           padding: '1rem 2rem',
           fontSize: '1.5rem',
+          color: '#000',
           cursor: 'pointer',
           backgroundColor: '#fff',
           border: 'none',

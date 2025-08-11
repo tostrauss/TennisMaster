@@ -1,8 +1,7 @@
 // src/stores/gameStore.js
 import { create } from 'zustand';
-import { courts, topPlayers } from '../data/players';
+import { courts } from '../data/players';
 
-// ... (DIFFICULTY_LEVELS and PLAY_STYLES remain the same)
 export const DIFFICULTY_LEVELS = {
   EASY: { label: 'Easy', multiplier: 0.7 },
   MEDIUM: { label: 'Medium', multiplier: 0.85 },
@@ -13,72 +12,45 @@ export const DIFFICULTY_LEVELS = {
 export const PLAY_STYLES = {
   AGGRESSIVE: {
     label: 'Aggressive',
-    attributes: {
-      powerMultiplier: 1.2,
-      accuracyMultiplier: 0.9,
-      netApproach: true,
-      riskTaking: 'high'
-    }
+    attributes: { powerMultiplier: 1.2, accuracyMultiplier: 0.9, netApproach: true, riskTaking: 'high' }
   },
   DEFENSIVE: {
     label: 'Defensive',
-    attributes: {
-      powerMultiplier: 0.9,
-      accuracyMultiplier: 1.1,
-      netApproach: false,
-      riskTaking: 'low'
-    }
+    attributes: { powerMultiplier: 0.9, accuracyMultiplier: 1.1, netApproach: false, riskTaking: 'low' }
   },
   ALLROUND: {
     label: 'All-Round',
-    attributes: {
-      powerMultiplier: 1,
-      accuracyMultiplier: 1,
-      netApproach: 'situational',
-      riskTaking: 'medium'
-    }
+    attributes: { powerMultiplier: 1, accuracyMultiplier: 1, netApproach: 'situational', riskTaking: 'medium' }
   },
   SERVE_AND_VOLLEY: {
     label: 'Serve & Volley',
-    attributes: {
-      powerMultiplier: 1.1,
-      accuracyMultiplier: 0.95,
-      netApproach: 'aggressive',
-      riskTaking: 'high'
-    }
+    attributes: { powerMultiplier: 1.1, accuracyMultiplier: 0.95, netApproach: 'aggressive', riskTaking: 'high' }
   }
 };
 
-
 const useGameStore = create((set, get) => ({
-  // Core game state
   gamePhase: 'menu', // 'menu', 'select', 'playing', 'tournament', 'gameover'
   setGamePhase: (phase) => set({ gamePhase: phase }),
 
-  // Player and Court selection
   player1: null,
   player2: null,
   setPlayer1: (player) => set({ player1: player }),
   setPlayer2: (player) => set({ player2: player }),
+  
   currentCourt: courts[0].id,
   setCurrentCourt: (courtId) => set({ currentCourt: courtId }),
 
-  // Scoring
   score: {
     player1: { points: 0, games: 0, sets: 0 },
     player2: { points: 0, games: 0, sets: 0 }
   },
   servingPlayer: 'player1',
   
-  // Game settings
   difficulty: 'MEDIUM',
   setDifficulty: (level) => set({ difficulty: level }),
 
-  // --- NEW: Tournament specific state ---
-  activeTournamentMatch: null, // Holds the current match from the bracket
-  lastMatchWinner: null, // To communicate winner from Game back to Tournament
-  
-  // --- ACTIONS ---
+  activeTournamentMatch: null,
+  lastMatchWinner: null,
   
   startTournamentMatch: (match) => {
     set({
@@ -86,14 +58,14 @@ const useGameStore = create((set, get) => ({
       player1: match.player1,
       player2: match.player2,
       gamePhase: 'playing',
-      lastMatchWinner: null // Clear previous winner
+      lastMatchWinner: null
     });
   },
 
   addPoint: (player) => {
     set((state) => {
       const newScore = JSON.parse(JSON.stringify(state.score));
-      const p = player;
+      const p = player; // 'player1' or 'player2'
       const o = player === 'player1' ? 'player2' : 'player1';
       
       const winGame = () => {
@@ -115,12 +87,13 @@ const useGameStore = create((set, get) => ({
             return {
               gamePhase: 'tournament',
               lastMatchWinner: winner,
-              activeTournamentMatch: null // Match is over
+              activeTournamentMatch: null
             };
           } else {
             return { gamePhase: 'gameover' };
           }
         }
+        // Switch server after a game is won
         return { score: newScore, servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1' };
       };
 
@@ -131,8 +104,8 @@ const useGameStore = create((set, get) => ({
       else if (pPoints === 15) newScore[p].points = 30;
       else if (pPoints === 30) newScore[p].points = 40;
       else if (pPoints === 40) {
-        if (oPoints === 40) newScore[p].points = 'AD';
-        else if (oPoints === 'AD') newScore[o].points = 40;
+        if (oPoints === 40) newScore[p].points = 'AD'; // Advantage
+        else if (oPoints === 'AD') newScore[o].points = 40; // Deuce
         else return winGame();
       } else if (pPoints === 'AD') {
         return winGame();

@@ -1,7 +1,7 @@
 // src/components/Scene.jsx
 import React, { Suspense, useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
-import { Sky, Environment } from '@react-three/drei';;
+import { Sky, Environment, ContactShadows } from '@react-three/drei';
 import Player from './Player';
 import Court from './Court';
 import Ball from './Ball';
@@ -41,6 +41,13 @@ function Scene({ player1, player2, court }) {
     <Suspense fallback={null}>
       <Sky sunPosition={[100, 20, 100]} />
       <Environment preset="sunset" />
+      <ContactShadows 
+        position={[0, 0.01, 0]} 
+        opacity={0.6} 
+        scale={60} 
+        blur={1.5} 
+        far={25}
+      />
       
       <Court />
       

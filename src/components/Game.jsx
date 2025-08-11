@@ -1,7 +1,7 @@
 // src/components/Game.jsx
 import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Physics } from '@react-three/cannon';
+import { Physics, Debug } from '@react-three/cannon';
 import Scene from './Scene';
 import GameUI from './GameUI';
 import useGameStore from '../stores/gameStore';
@@ -53,11 +53,13 @@ function Game() {
             restitution: court.bounceHeight * 0.9
           }}
         >
-          <Scene 
-            player1={player1} 
-            player2={player2}
-            court={court}
-          />
+          <Debug color="black" scale={1.01}>
+            <Scene 
+              player1={player1} 
+              player2={player2}
+              court={court}
+            />
+          </Debug>
         </Physics>
       </Canvas>
       <GameUI 

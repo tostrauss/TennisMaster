@@ -171,6 +171,7 @@ function PlayerSelect() {
             padding: '1rem 2rem',
             fontSize: '1.5rem',
             cursor: 'pointer',
+            color: '#000',
             backgroundColor: 'white',
             border: 'none',
             borderRadius: '8px',

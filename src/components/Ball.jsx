@@ -9,7 +9,7 @@ import { PhysicsError } from './ErrorBoundary';
 function Ball({ addPoint }) {
   const [ref, api] = useSphere(() => ({
     mass: 0.057, // Official tennis ball mass in kg
-    position: [0, 1, 0],
+    position: [0, 5, 0], // Start high to drop into play
     args: [0.033], // Official tennis ball radius in meters
     linearDamping: 0.2,
     angularDamping: 0.2,
@@ -23,6 +23,14 @@ function Ball({ addPoint }) {
   const position = useRef([0, 0, 0]);
   const spin = useRef([0, 0, 0]);
   const currentShotType = useRef(null);
+
+  // Expose the api to the mesh's userData so other components can access it
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.userData.api = api;
+    }
+  }, [ref, api]);
+
 
   const validateBallState = (pos, vel) => {
     if (pos.some(v => !isFinite(v)) || vel.some(v => !isFinite(v))) {
@@ -87,7 +95,7 @@ function Ball({ addPoint }) {
     const shot = currentShotType.current;
 
     // Apply Magnus force for spin effects
-    if (shot.name === 'Topspin') {
+    if (shot.name === 'Topspin' || shot.name === 'Kick Serve') {
       api.applyForce([0, -0.2, 0], position.current); // Downward force
     } else if (shot.name === 'Slice' || shot.name === 'Drop Shot') {
       api.applyForce([0, 0.1, 0], position.current); // Upward lift
@@ -97,10 +105,12 @@ function Ball({ addPoint }) {
   useEffect(() => {
     const unsubscribe = api.position.subscribe((p) => {
       position.current = p;
-      if (p[1] < -1) { // Ball went through the ground
+      if (p[1] < -5) { // Ball fell way through the ground
         const scoringPlayer = p[2] > 0 ? 'player1' : 'player2';
         addPoint(scoringPlayer);
-        api.position.set(0, 5, p[2] > 0 ? -2 : 2);
+        
+        // Reset ball position relative to who scored for the next serve
+        api.position.set(0, 5, scoringPlayer === 'player1' ? 2 : -2);
         api.velocity.set(0, 0, 0);
         api.angularVelocity.set(0, 0, 0);
         currentShotType.current = null;
@@ -112,7 +122,7 @@ function Ball({ addPoint }) {
   return (
     <mesh ref={ref} castShadow name="ball">
       <sphereGeometry args={[0.033, 32, 32]} />
-      <meshStandardMaterial color="yellow" emissive="yellow" emissiveIntensity={0.5} />
+      <meshStandardMaterial color="yellow" emissive="yellow" emissiveIntensity={0.8} />
     </mesh>
   );
 }

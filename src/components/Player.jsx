@@ -19,6 +19,14 @@ function Player({ playerData, position, isOpponent, gameState }) {
     linearDamping: 0.95,
   }));
 
+  // Ref to store the current velocity
+  const velocity = useRef([0, 0, 0]);
+  useEffect(() => {
+    // Subscribe to the velocity property
+    const unsubscribe = api.velocity.subscribe((v) => (velocity.current = v));
+    return unsubscribe; // Unsubscribe on component unmount
+  }, [api.velocity]);
+
   const ai = useRef(null);
   if (isOpponent && !ai.current) {
     const difficulty = useGameStore.getState().difficulty;
@@ -29,7 +37,7 @@ function Player({ playerData, position, isOpponent, gameState }) {
 
   useEffect(() => {
     const handleMove = (e) => !isOpponent && (movement.current = e.detail);
-    const handleHit = () => !isOpponent && hit();
+    const handleHit = (e) => !isOpponent && hit(e.detail);
     
     window.addEventListener('playerMove', handleMove);
     window.addEventListener('playerHit', handleHit);
@@ -40,26 +48,31 @@ function Player({ playerData, position, isOpponent, gameState }) {
   }, [isOpponent]);
   
   const ballRef = useRef();
+  const ballApi = useRef();
   useEffect(() => {
       ballRef.current = gameScene.getObjectByName('ball');
+      if(ballRef.current) ballApi.current = ballRef.current.userData.api;
   }, [gameScene]);
 
-  useFrame(() => {
+  useFrame((state, delta) => {
+    if(!playerGroupRef.current) return;
     api.position.subscribe(p => playerGroupRef.current.position.set(p[0], p[1] - 0.5, p[2]));
-    const velocity = api.velocity.get();
-
+    
     const speed = playerData.attributes.speed * 0.08;
     let newVelX = 0;
     let newVelZ = 0;
 
-    if (isOpponent && ai.current && ballRef.current) {
+    if (isOpponent && ai.current && ballRef.current && ballApi.current) {
+        const ballVelocity = new Vector3();
+        ballApi.current.velocity.subscribe(v => ballVelocity.set(v[0], v[1], v[2]));
+
         const decision = ai.current.update(
             ballRef.current.position, 
-            new Vector3(), 
+            ballVelocity, 
             playerGroupRef.current.position, 
             gameScene.getObjectByName('player1Group')?.position || new Vector3(0, 1, 8), 
             gameState, 
-            0.016
+            delta
         );
         if (decision) {
             if (decision.type === 'move') {
@@ -74,7 +87,7 @@ function Player({ playerData, position, isOpponent, gameState }) {
       newVelZ = -movement.current.y * speed;
     }
 
-    api.velocity.set(newVelX, velocity[1], newVelZ);
+    api.velocity.set(newVelX, velocity.current[1], newVelZ);
     if (newVelX !== 0 || newVelZ !== 0) {
       playerGroupRef.current.rotation.y = Math.atan2(newVelX, newVelZ);
     }
