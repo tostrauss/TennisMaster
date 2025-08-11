@@ -1,69 +1,6 @@
-import { create } from 'zustand'
-
-const useGameStore = create()((set) => ({
-  gamePhase: 'menu',
-  player1: null,
-  player2: null,
-  currentCourt: null,
-  score: {
-    player1: { points: 0, games: 0, sets: 0 },
-    player2: { points: 0, games: 0, sets: 0 }
-  },
-  servingPlayer: 'player1',
-  difficulty: 'MEDIUM',
-
-  setGamePhase: (phase) => set({ gamePhase: phase }),
-  setPlayer1: (player) => set({ player1: player }),
-  setPlayer2: (player) => set({ player2: player }),
-  setCurrentCourt: (courtId) => set({ currentCourt: courtId }),
-  setDifficulty: (level) => set({ difficulty: level }),
-
-  toggleServe: () => set((state) => ({
-    servingPlayer: state.servingPlayer === 'player1' ? 'player2' : 'player1'
-  })),
-
-  resetGame: () => set({
-    score: {
-      player1: { points: 0, games: 0, sets: 0 },
-      player2: { points: 0, games: 0, sets: 0 }
-    },
-    servingPlayer: 'player1'
-  }),
-
-  addPoint: (player) => set((state) => {
-    const newScore = { ...state.score };
-    const currentPlayer = newScore[player];
-    const otherPlayer = newScore[player === 'player1' ? 'player2' : 'player1'];
-
-    switch (currentPlayer.points) {
-      case 0: currentPlayer.points = 15; break;
-      case 15: currentPlayer.points = 30; break;
-      case 30: currentPlayer.points = 40; break;
-      case 40:
-        if (otherPlayer.points < 40) {
-          currentPlayer.points = 0;
-          otherPlayer.points = 0;
-          currentPlayer.games++;
-          if (currentPlayer.games >= 6 && currentPlayer.games - otherPlayer.games >= 2) {
-            currentPlayer.games = 0;
-            otherPlayer.games = 0;
-            currentPlayer.sets++;
-          }
-        } else {
-          currentPlayer.points = 'AD';
-        }
-        break;
-      case 'AD':
-        currentPlayer.points = 0;
-        otherPlayer.points = 0;
-        currentPlayer.games++;
-        break;
-    }
-    return { score: newScore };
-  })
-}))
-
-export default useGameStore
+// src/stores/gameStore.js
+import { create } from 'zustand';
+import { courts } from '../data/players';
 
 export const DIFFICULTY_LEVELS = {
   EASY: { label: 'Easy', multiplier: 0.7 },
@@ -110,6 +47,11 @@ export const PLAY_STYLES = {
     }
   }
 };
+
+const useGameStore = create((set, get) => ({
+  // Game Phase
+  gamePhase: 'menu', // 'menu', 'select', 'playing', 'gameover'
+  setGamePhase: (phase) => set({ gamePhase: phase }),
 
   // Players
   player1: null,

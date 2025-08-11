@@ -4,8 +4,7 @@ import { Joystick } from 'react-joystick-component';
 import useGameStore from '../stores/gameStore';
 
 function GameUI({ score, player1, player2, court }) {
-  const state = useGameStore();
-  const { setGamePhase, addPoint, servingPlayer } = state;
+  const { setGamePhase, addPoint, servingPlayer } = useGameStore();
 
   const handleMove = (e) => {
     // Movement will be handled by the Scene component

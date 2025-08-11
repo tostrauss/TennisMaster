@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TOURNAMENTS, TournamentBracket, TOURNAMENT_ROUNDS, fullPlayerRoster, PRIZE_DISTRIBUTION } from '../data/tournaments';
-import { useGameStore } from '../stores/gameStore';
+import useGameStore from '../stores/gameStore';
 
 const Tournament = () => {
   const [selectedTournament, setSelectedTournament] = useState(TOURNAMENTS.AUSTRALIAN_OPEN);

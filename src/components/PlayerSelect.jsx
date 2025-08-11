@@ -1,20 +1,77 @@
-// src/components/PlayerSelect.jsx
+// srfunction PlayerSelect() {
+  const { setGamePhase, setPlayer1, setPlayer2, resetGame } = useGameStore();
+  const [selectedPlayer1, setSelectedPlayer1] = useState(null);
+  const [error, setError] = useState(null);
+
+  const validatePlayer = (player) => {
+    if (!player || !player.id || !player.attributes) {
+      throw new Error('Invalid player data');
+    }
+    return true;
+  };
+
+  const handlePlayerSelect = (player) => {
+    try {
+      setError(null);
+      if (!player) return;
+      
+      validatePlayer(player);
+      
+      if (!selectedPlayer1) {
+        setSelectedPlayer1(player);
+      } else {
+        // Don't allow selecting the same player twice
+        if (player.id === selectedPlayer1.id) {
+          setError("Can't select the same player twice!");
+          return;
+        }
+        
+        // Ensure both players are properly set before changing game phase
+        validatePlayer(selectedPlayer1);
+        validatePlayer(player);
+        
+        setPlayer1(selectedPlayer1);
+        setPlayer2(player);
+        resetGame(); // Reset the game state before starting
+        
+        // Small delay to ensure store is updated
+        setTimeout(() => setGamePhase('playing'), 100);
+      }
+    } catch (error) {
+      console.error('Error selecting players:', error);
+      setError(error.message);
+      setSelectedPlayer1(null);
+    }
+  };ponents/PlayerSelect.jsx
 import React, { useState } from 'react';
 import useGameStore from '../stores/gameStore';
 import { topPlayers } from '../data/players';
 
 function PlayerSelect() {
-  const state = useGameStore();
-  const { setGamePhase, setPlayer1, setPlayer2 } = state;
+  const { setGamePhase, setPlayer1, setPlayer2 } = useGameStore();
   const [selectedPlayer1, setSelectedPlayer1] = useState(null);
 
   const handlePlayerSelect = (player) => {
+    if (!player) return;
+    
     if (!selectedPlayer1) {
       setSelectedPlayer1(player);
     } else {
-      setPlayer1(selectedPlayer1);
-      setPlayer2(player);
-      setGamePhase('playing');
+      // Don't allow selecting the same player twice
+      if (player.id === selectedPlayer1.id) {
+        return;
+      }
+      
+      // Ensure both players are properly set before changing game phase
+      try {
+        setPlayer1(selectedPlayer1);
+        setPlayer2(player);
+        // Small delay to ensure store is updated
+        setTimeout(() => setGamePhase('playing'), 100);
+      } catch (error) {
+        console.error('Error selecting players:', error);
+        setSelectedPlayer1(null);
+      }
     }
   };
 

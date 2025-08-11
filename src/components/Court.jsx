@@ -2,17 +2,39 @@
 import React, { useEffect } from 'react';
 import { usePlane, useBox } from '@react-three/cannon';
 import { Plane, Box, useTexture } from '@react-three/drei';
-import { useGameStore } from '../stores/gameStore';
-import { courts } from '../data/players';/components/Court.jsx
-import React, { useEffect } from 'react';
-import { usePlane, useBox } from '@react-three/cannon';
-import { Plane, Box, useTexture } from '@react-three/drei';
 import useGameStore from '../stores/gameStore';
 import { courts } from '../data/players';
 
 function Court() {
   const currentCourt = useGameStore(state => state.currentCourt);
   const court = courts.find(c => c.id === currentCourt) || courts[0];
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    try {
+      if (!court) {
+        throw new Error('Invalid court configuration');
+      }
+      
+      // Validate court physics properties
+      if (typeof court.bounceHeight !== 'number' || 
+          typeof court.speed !== 'number' ||
+          court.bounceHeight < 0 || 
+          court.bounceHeight > 1 ||
+          court.speed < 0 || 
+          court.speed > 1) {
+        throw new Error('Invalid court physics properties');
+      }
+
+      setIsInitialized(true);
+      setError(null);
+    } catch (err) {
+      console.error('Court initialization error:', err);
+      setError(err.message);
+      setIsInitialized(false);
+    }
+  }, [court]);
   
   // Load court texture based on surface type
   const texture = useTexture(`/textures/${court.surface}_court.jpg`);

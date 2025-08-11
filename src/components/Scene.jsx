@@ -87,12 +87,39 @@ function Ball({ addPoint }) {
   );
 }
 
+import { withErrorBoundary, PhysicsError } from './ErrorBoundary';
+
 function Scene({ player1, player2, court }) {
-  const { addPoint, score, servingPlayer } = useGameStore();
+  const { addPoint, score, servingPlayer, setGamePhase } = useGameStore();
   const { camera } = useThree();
+  
+  // Validate required props
+  useEffect(() => {
+    try {
+      if (!player1 || !player2 || !court) {
+        throw new Error('Missing required props in Scene');
+      }
+      if (!court.model) {
+        throw new Error('Invalid court configuration');
+      }
+    } catch (error) {
+      console.error('Scene initialization error:', error);
+      setGamePhase('menu');
+    }
+  }, [player1, player2, court]);
   
   // Load court model if available
   const courtModel = useGLTF(`/models/courts/${court.model}`, true);
+
+  // Error checking for physics state
+  const checkPhysicsState = (position, velocity) => {
+    if (position.some(val => !isFinite(val) || Math.abs(val) > 1000)) {
+      throw new PhysicsError('Invalid physics position detected');
+    }
+    if (velocity.some(val => !isFinite(val) || Math.abs(val) > 1000)) {
+      throw new PhysicsError('Invalid physics velocity detected');
+    }
+  };
 
   // Game state for AI decision making
   const gameState = {
@@ -136,4 +163,9 @@ function Scene({ player1, player2, court }) {
   );
 }
 
-export default Scene;
+export default withErrorBoundary(Scene, {
+  onPhysicsReset: () => {
+    const resetGame = useGameStore.getState().resetGame;
+    resetGame();
+  }
+});

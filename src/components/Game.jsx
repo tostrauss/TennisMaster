@@ -8,10 +8,13 @@ import GameUI from './GameUI';
 import useGameStore from '../stores/gameStore';
 import { courts } from '../data/players';
 import Tournament from './Tournament';
+import { withErrorBoundary, PhysicsError, ScoreError } from './ErrorBoundary';
 
 function Game() {
-  const [gameMode, setGameMode] = useState('quickMatch');
-  const state = useGameStore();
+  const [gameMode, setGameMode] = useState('quickMatch'); // 'quickMatch' or 'tournament'
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
   const { 
     player1, 
     player2, 
@@ -19,16 +22,58 @@ function Game() {
     score,
     resetGame,
     setGamePhase
-  } = state;
+  } = useGameStore();
 
-  const court = courts.find(c => c.id === currentCourt) || courts[0];
+  // Validate game state
+  useEffect(() => {
+    try {
+      setError(null);
+      setIsLoading(true);
+
+      if (!player1 || !player2) {
+        throw new Error('Players not selected');
+      }
+
+      if (!currentCourt) {
+        throw new Error('Court not selected');
+      }
+
+      // Validate player data
+      if (!player1.attributes || !player2.attributes) {
+        throw new Error('Invalid player data');
+      }
+
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Game initialization error:', error);
+      setError(error.message);
+      setGamePhase('menu');
+    }
+  }, [player1, player2, currentCourt]);
+
+  const court = courts.find(c => c.id === currentCourt);
 
   useEffect(() => {
-    resetGame();
+    // Validate required game data before initializing
+    if (!player1 || !player2 || !court) {
+      console.error('Missing required game data:', { player1, player2, court });
+      setGamePhase('menu');
+      return;
+    }
+
+    // Initialize game
+    try {
+      resetGame();
+    } catch (error) {
+      console.error('Error initializing game:', error);
+      setGamePhase('menu');
+    }
+    
+    // Cleanup on unmount
     return () => {
       resetGame();
     };
-  }, [resetGame]);
+  }, [player1, player2, court]);
 
   const handleEscape = (e) => {
     if (e.key === 'Escape') {
@@ -102,4 +147,22 @@ function Game() {
   );
 }
 
-export default Game;
+// Wrap Game component with error boundary and handlers
+export default withErrorBoundary(Game, {
+  onPhysicsReset: () => {
+    const resetGame = useGameStore.getState().resetGame;
+    resetGame();
+  },
+  onScoreReset: () => {
+    const { score, resetGame } = useGameStore.getState();
+    // Only reset score if it's in an invalid state
+    if (score.player1.points > 40 || score.player2.points > 40) {
+      resetGame();
+    }
+  },
+  onRetry: () => {
+    // General retry logic
+    const { setGamePhase } = useGameStore.getState();
+    setGamePhase('menu');
+  }
+});

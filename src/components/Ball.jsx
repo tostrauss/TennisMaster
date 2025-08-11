@@ -5,14 +5,42 @@ import { useSphere } from '@react-three/cannon';
 import { Vector3 } from 'three';
 import { SHOT_TYPES } from '../utils/shotTypes';
 
+import { PhysicsError } from './ErrorBoundary';
+
 function Ball({ addPoint }) {
   const [ref, api] = useSphere(() => ({
     mass: 0.057, // Official tennis ball mass in kg
     position: [0, 1, 0],
     args: [0.033], // Official tennis ball radius in meters
     linearDamping: 0.2,
-    angularDamping: 0.2
+    angularDamping: 0.2,
+    material: {
+      friction: 0.5,
+      restitution: 0.8
+    }
   }));
+
+  // Validate ball physics
+  const validateBallState = (position, velocity) => {
+    // Check for NaN or infinite values
+    if (position.some(val => !isFinite(val))) {
+      throw new PhysicsError('Ball position calculation error');
+    }
+    if (velocity.some(val => !isFinite(val))) {
+      throw new PhysicsError('Ball velocity calculation error');
+    }
+
+    // Check for out-of-bounds values
+    const maxPosition = 100; // Maximum reasonable distance from origin
+    const maxVelocity = 200; // Maximum reasonable velocity
+    
+    if (position.some(val => Math.abs(val) > maxPosition)) {
+      throw new PhysicsError('Ball out of bounds');
+    }
+    if (velocity.some(val => Math.abs(val) > maxVelocity)) {
+      throw new PhysicsError('Ball velocity exceeded limits');
+    }
+  };
 
   const velocity = useRef([0, 0, 0]);
   const position = useRef([0, 0, 0]);
