@@ -5,6 +5,7 @@ import { useSphere } from '@react-three/cannon';
 import { gsap } from 'gsap';
 import { Vector3 } from 'three';
 import { AIController } from '../utils/aiController';
+import { SHOT_TYPES, calculateShotParameters } from '../utils/shotTypes';
 import useGameStore from '../stores/gameStore';
 
 const COURT_LENGTH = 23.77;
@@ -128,11 +129,18 @@ function Player({ playerData, position, isOpponent, gameState }) {
         if (isOpponent) { // AI Shot
             shotParams = { ...shotDetails };
         } else { // Player Shot
-            const targetPosition = new Vector3((Math.random() - 0.5) * 10, 0.5, isOpponent ? COURT_LENGTH/2 : -COURT_LENGTH/2);
+            const targetPosition = new Vector3(
+              (Math.random() - 0.5) * 6, // Keep within singles court width
+              0.5,
+              isOpponent ? COURT_LENGTH/2 - 1 : -COURT_LENGTH/2 + 1
+            );
+            const params = calculateShotParameters(
+              SHOT_TYPES[shotDetails.type || 'TOPSPIN'],
+              playerData.attributes,
+              gameState.courtSurface
+            );
             shotParams = {
-                power: playerData.attributes.power,
-                spin: playerData.attributes.spin,
-                accuracy: playerData.attributes.accuracy,
+                ...params,
                 shotType: shotDetails.type || 'TOPSPIN',
                 targetPosition,
             };
@@ -145,13 +153,11 @@ function Player({ playerData, position, isOpponent, gameState }) {
   };
 
   return (
-    <group ref={ref} name={isOpponent ? 'player2' : 'player1'}>
-        <group ref={playerGroupRef} name={isOpponent ? 'player2Group' : 'player1Group'} scale={0.5} position-y={-0.5}>
-            <mesh>
-              <capsuleGeometry args={[0.4, 1, 4]} />
-              <meshStandardMaterial color={isOpponent ? "#ff4444" : "#4466ff"} />
-            </mesh>
-        </group>
+    <group ref={playerGroupRef} name={isOpponent ? 'player2Group' : 'player1Group'}>
+      <mesh ref={ref} position={[0, 1, 0]}>
+        <capsuleGeometry args={[0.4, 1, 4]} />
+        <meshStandardMaterial color={isOpponent ? "#ff4444" : "#4466ff"} />
+      </mesh>
     </group>
   );
 }

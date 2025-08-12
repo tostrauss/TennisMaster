@@ -1,7 +1,8 @@
 // src/components/Game.jsx
 import React, { useEffect, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Physics } from '@react-three/cannon'; // Debug removed from imports
+import { Physics } from '@react-three/cannon';
+import { OrbitControls } from '@react-three/drei';
 import Scene from './Scene';
 import GameUI from './GameUI';
 import useGameStore from '../stores/gameStore';
@@ -37,7 +38,8 @@ function Game() {
 
   return (
     <>
-      <Canvas shadows camera={{ position: [0, 15, 30], fov: 45 }}>
+      <Canvas shadows camera={{ position: [0, 20, 35], fov: 45 }}>
+        <OrbitControls enablePan={false} maxPolarAngle={Math.PI / 2.1} />
         <ambientLight intensity={0.8} />
         <directionalLight
           castShadow

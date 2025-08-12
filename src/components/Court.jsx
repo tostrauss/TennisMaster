@@ -59,9 +59,11 @@ function Court() {
 
   return (
     <>
-      <Plane args={[100, 100]} ref={groundRef} receiveShadow>
-        <meshStandardMaterial color={court.color} />
-      </Plane>
+      <group rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} ref={groundRef}>
+        <Plane args={[100, 100]} receiveShadow>
+          <meshStandardMaterial color={court.color} />
+        </Plane>
+      </group>
       
       {/* Net and Posts */}
       <Box ref={netRef}>
